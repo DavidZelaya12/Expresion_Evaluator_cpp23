@@ -1,126 +1,122 @@
 #include "Validator.h"
+#include <cctype>
 #include <iostream>
 #include <stack>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 /*
-Este parser se utilizara para separar los tokens de la expresion
-y evaluar si son validos o no para la expresion y en caso que no hacer
-un throw con un mensaje de error
+Este parser se dedicara a seguir una gramatica bnf para
+validar la sintaxis de una expresion matematica, no para
+su evaluacion
+*/
+
+/*
+BNF:
+<expr> ::= <term> { ("+" | "-") <term> }
+<term> ::= <factor> { ("*" | "/") <factor> }
+<factor> ::= <number> | "(" <expr> ")"
+<number> ::= <digit> { <digit> }
+<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 */
 
 class Parser {
 public:
   Validator val;
-  Parser() { std::cout << "Parser creado" << std::endl; }
+  std::vector<std::string> tokens;
+  int pos;
 
-  void tockenizado(std::string expresion) {
-    // Aqui se convierten en tokens los caracteres de la expresion
-    std::stack<std::string> Tokens;
+  Parser() : pos(0) { std::cout << "Parser creado" << std::endl; }
+
+  // Tokeniza la expresión y valida los paréntesis
+  void tokenizar(const std::string &expresion) {
+    tokens.clear();
+    pos = 0;
     std::string token = "";
 
-    std::cout << "Expresion: " << expresion << std::endl;
-    for (int i = 0; i <= expresion.length(); i++) {
-      if (expresion[i] == ' ') {
+    for (int i = 0; i < expresion.length(); i++) {
+      char c = expresion[i];
+      if (c = ' ')
         continue;
-      }
-      if (expresion[i] == '(' || expresion[i] == ')' ||
-          val.ValidarOperador(std::string(1, expresion[i]))) {
+      if (c == '(' || c == ')' || val.ValidarOperador(std::string(1, c))) {
         if (!token.empty()) {
-          Tokens.push(token);
+          tokens.push_back(token);
           token = "";
         }
-        Tokens.push(std::string(1, expresion[i]));
+        tokens.push_back(std::string(1, c));
       } else {
-        token += expresion[i];
+        token += c;
       }
     }
-    if (!token.empty()) {
-      Tokens.push(token);
-    }
-    Validarparentesis(expresion);
-    MostrarTokens(Tokens);
-    ValidarExpresion(Tokens);
+    if (!token.empty())
+      tokens.push_back(token);
+
+    ValidarParentesis(expresion);
   }
 
-  void Validarparentesis(std::string expresion) {
-    // Aqui se valida que los parentesis esten balanceados
+  // Verifica que los parentesis estén balanceados
+  void ValidarParentesis(const std::string &expresion) {
     std::stack<char> pila;
-    for (int i = 0; i < expresion.length(); i++) {
-      if (expresion[i] == '(') {
-        pila.push(expresion[i]);
-      } else if (expresion[i] == ')') {
-        if (pila.empty()) {
+    for (char c : expresion) {
+      if (c == '(')
+        pila.push(c);
+      else if (c == ')') {
+        if (pila.empty())
           throw std::invalid_argument(
               "Error de sintaxis: parentesis no balanceados");
-        }
         pila.pop();
       }
     }
-    if (!pila.empty()) {
+    if (!pila.empty())
       throw std::invalid_argument(
           "Error de sintaxis: parentesis no balanceados");
+  }
+
+  // <expr> ::= <term> { ("+" | "-") <term> }
+  void parseExpression() {
+    parseTerm();
+    while (pos < tokens.size() && (tokens[pos] == "+" || tokens[pos] == "-")) {
+      pos++; // Consume el operador
+      parseTerm();
     }
   }
 
-  void ValidarExpresion(std::stack<std::string> tokens) {
-    // Aqui se valida la expresion sintacticamente, no se evalua si los valores
-    // son correctos
-    std::string tokenActual = "";
-    std::string tokenAnterior = "";
-
-    while (!tokens.empty()) {
-      if (tokenActual.empty()) {
-        tokenActual = tokens.top();
-        tokens.pop();
-        continue;
-      }
-
-      // Caso ++, --, +-, -+ de doble operador seguido
-      if (val.ValidarOperador(tokenActual) &&
-          val.ValidarOperador(tokenAnterior)) {
-        throw std::invalid_argument(
-            "Error de sintaxis: Operadores consecutivos");
-      }
-      // caso conde el token actual no es un operador y le sigue un ( -> 10(1+1)
-      if (!val.ValidarOperador(tokenAnterior) && tokenActual == "(") {
-        throw std::invalid_argument(
-            "Error de sintaxis: se espera un operador antes de un (");
-      }
-      // caso donde el token actual es un operador y le sigue un ) -> 10+1)
-      if (val.ValidarOperador(tokenActual) && tokenAnterior == ")") {
-        throw std::invalid_argument(
-            "Error de sintaxis: se espera un operador despues de un )");
-      }
-
-      // caso donde a un numero no le sigue un operador -> 10 1
-      if (val.ValidarNumero(tokenActual) && val.ValidarNumero(tokenAnterior)) {
-        throw std::invalid_argument(
-            "Error de sintaxis: se espera un operador entre numeros");
-      }
-
-      // caso donde a un operador no le sigue un numero -> 10 + )
-      if (val.ValidarOperador(tokenActual) && tokenAnterior == "(") {
-        throw std::invalid_argument(
-            "Error de sintaxis: se espera un numero despues de un operador");
-      }
-
-      // caso donde aparece un ) sin un ( -> 10 + 1)
-      if (tokenActual == ")" && tokenAnterior != "(") {
-        throw std::invalid_argument(
-            "Error de sintaxis: se espera un ( antes de un )");
-      }
-
-      tokenAnterior = tokenActual;
-      tokenActual = tokens.top();
-      tokens.pop();
+  // <term> ::= <factor> { ("*" | "/") <factor> }
+  void parseTerm() {
+    parseFactor();
+    while (pos < tokens.size() && (tokens[pos] == "*" || tokens[pos] == "/")) {
+      pos++; // Consume el operador
+      parseFactor();
     }
   }
 
-  void MostrarTokens(std::stack<std::string> tokens) {
-    while (!tokens.empty()) {
-      std::cout << tokens.top() << std::endl;
-      tokens.pop();
+  // <factor> ::= <number> | "(" <expr> ")"
+  void parseFactor() {
+    if (pos >= tokens.size())
+      throw std::invalid_argument("Error de sintaxis: token inesperado");
+
+    std::string token = tokens[pos];
+    if (token == "(") {
+      pos++; // Consume "("
+      parseExpression();
+      if (pos >= tokens.size() || tokens[pos] != ")")
+        throw std::invalid_argument("Error de sintaxis: falta ')'");
+      pos++; // Consume ")"
+    } else {
+      // Validar que sea un número
+      if (!val.ValidarNumero(token))
+        throw std::invalid_argument("Error de sintaxis: token invalido '" +
+                                    token + "'");
+      pos++; // Consume el numero
     }
+  }
+
+  // Verifica que se haya consumido toda la expresion
+  void verificarSintaxis() {
+    parseExpression();
+    if (pos != tokens.size())
+      throw std::invalid_argument(
+          "Error de sintaxis: tokens adicionales encontrados");
   }
 };
