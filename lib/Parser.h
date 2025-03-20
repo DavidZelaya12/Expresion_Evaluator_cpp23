@@ -37,12 +37,15 @@ public:
 
     for (int i = 0; i < expresion.length(); i++) {
       char c = expresion[i];
-      if (c = ' ')
+      if (c == ' ')
         continue;
       if (c == '(' || c == ')' || val.ValidarOperador(std::string(1, c))) {
         if (!token.empty()) {
           tokens.push_back(token);
           token = "";
+        }
+        if (!tokens.empty() && std::isdigit(tokens.back().back()) && c == '(') {
+          tokens.push_back("*");
         }
         tokens.push_back(std::string(1, c));
       } else {
@@ -55,7 +58,7 @@ public:
     ValidarParentesis(expresion);
   }
 
-  // Verifica que los parentesis estén balanceados
+  // Verifica que los parentesis esten balanceados
   void ValidarParentesis(const std::string &expresion) {
     std::stack<char> pila;
     for (char c : expresion) {

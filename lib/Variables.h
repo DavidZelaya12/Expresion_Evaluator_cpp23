@@ -11,7 +11,7 @@ expresiones
 
 class Variables {
 public:
-  std::map<std::string, double> variables;
+  std::map<std::string, double> variableMap;
 
   Variables() {
     std::cout << "Variables creado" << std::endl;
@@ -22,25 +22,30 @@ public:
     std::ifstream archivo("variables.txt");
     std::string linea;
     while (std::getline(archivo, linea)) {
+
+      if (linea.empty()) {
+        continue;
+      }
+
       std::string variable = linea.substr(0, linea.find("="));
       std::string valor = linea.substr(linea.find("=") + 1);
-      variables[variable] = std::stod(valor);
+      variableMap[variable] = std::stod(valor);
     }
   }
 
   void MostrarVariables() {
-    for (auto const &x : variables) {
-      std::cout << x.first << " = " << x.second << std::endl;
+    for (auto const &x : variableMap) {
+      std::cout << x.first << "=" << x.second << std::endl;
     }
   }
 
   void AgregarVariable(std::string variable, double valor) {
-    variables[variable] = valor;
+    variableMap[variable] = valor;
   }
 
   bool ExisteVariable(std::string variable) {
-    return variables.find(variable) != variables.end();
+    return variableMap.find(variable) != variableMap.end();
   }
 
-  double ObtenerValor(std::string variable) { return variables[variable]; }
+  double ObtenerValor(std::string variable) { return variableMap[variable]; }
 };
