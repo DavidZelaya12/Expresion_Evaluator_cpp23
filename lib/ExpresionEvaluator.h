@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stack>
 #include <string>
+#include <vector>
 
 class ExpresionEvaluator {
 public:
@@ -11,7 +12,7 @@ public:
   Validator val;
 
   ExpresionEvaluator() {
-    std::cout << "Expresion Evaluator creado" << std::endl;
+    std::cout << "ExpresionEvaluator creado" << std::endl;
   }
 
   void setExpresion(const std::string &expresion) {
@@ -24,7 +25,6 @@ public:
       if (token == ' ')
         continue;
 
-      // Si es dígito, leer número completo
       if (isdigit(token)) {
         while (i < expresion.size() && isdigit(expresion[i])) {
           resultado += expresion[i];
@@ -74,8 +74,66 @@ public:
       ExpresionPostfija.push(tokenStr);
     }
 
-    std::cout << "Expresion Infija: " << expresion << std::endl;
-    std::cout << "Expresion Postfija: " << resultado << std::endl;
+    std::cout << "Expresion infija: " << expresion << std::endl;
+    std::cout << "Expresion postfija: " << resultado << std::endl;
+  }
+
+  void StackToVector(std::stack<std::string> &stack,
+                     std::vector<std::string> &outputVector) {
+    while (!stack.empty()) {
+      outputVector.push_back(stack.top());
+      stack.pop();
+    }
+    std::reverse(outputVector.begin(), outputVector.end());
+  }
+
+  void EvaluarExpresion() {
+    // C++ 23 Feature: deduccion automatica de tipos en funciones locales
+    auto Apply = [](double a, double b, std::string op) -> double {
+      if (op == "+")
+        return a + b;
+      if (op == "-")
+        return a - b;
+      if (op == "*")
+        return a * b;
+      if (op == "%")
+        return (int)a % (int)b;
+      if (op == "/") {
+        if (b == 0)
+          throw std::invalid_argument(
+              "Error: Division por cero no es permitida");
+        return a / b;
+      }
+      return 0;
+    };
+
+    auto ConsumeOperator = [&Apply](std::stack<double> &stack,
+                                    std::string op) -> double {
+      double a = stack.top();
+      stack.pop();
+      double b = stack.top();
+      stack.pop();
+
+      return Apply(b, a, op);
+    };
+
+    std::stack<double> EvaluationStack;
+    std::vector<std::string> outputVector;
+    StackToVector(ExpresionPostfija, outputVector);
+
+    for (int i = 0; i < outputVector.size(); i++) {
+      std::string token = outputVector[i];
+
+      if (val.ValidarOperador(token)) {
+        double resultado;
+        resultado = ConsumeOperator(EvaluationStack, token);
+        EvaluationStack.push(resultado);
+      } else {
+        EvaluationStack.push(std::stod(token));
+      }
+    }
+
+    std::cout << "Resultado: " << EvaluationStack.top() << std::endl;
   }
 
   std::stack<std::string> getExpresion() { return ExpresionPostfija; }
