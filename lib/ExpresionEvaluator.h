@@ -6,18 +6,18 @@
 #include <iostream>
 #include <sstream>
 #include <stack>
+#include <stdfloat>
 #include <string>
+#include <utility>
 #include <vector>
 class ExpresionEvaluator {
 public:
   std::stack<std::string> ExpresionPostfija;
-  std::stack<double> EvaluationStack;
-  double resultado = 0;
+  std::stack<std::float64_t> EvaluationStack;
+  std::float64_t resultado = 0;
   Validator val;
 
-  ExpresionEvaluator() {
-    std::cout << "ExpresionEvaluator creado" << std::endl;
-  }
+  ExpresionEvaluator() {}
 
   void setExpresion(const std::string &expresion) {
     std::stack<char> pilaOperadores;
@@ -39,6 +39,7 @@ public:
         resultado += ' ';
         i--; // ajustar índice
       } else if (token == '(') {
+        // Si es '(' se agrega directo a la pila
         pilaOperadores.push(token);
       } else if (token == ')') {
         // Vaciar hasta encontrar '('
@@ -47,6 +48,7 @@ public:
           resultado += ' ';
           pilaOperadores.pop();
         }
+        // Eliminar '('
         if (!pilaOperadores.empty())
           pilaOperadores.pop(); // eliminar '('
       } else if (val.ValidarOperador(std::string(1, token))) {
@@ -60,7 +62,7 @@ public:
         }
         pilaOperadores.push(token);
       } else {
-        // Cualquier otro carácter se agrega directo al resultado
+        // Cualquier otro caracter se agrega directo al resultado
         resultado += token;
         resultado += ' ';
       }
@@ -73,7 +75,8 @@ public:
       pilaOperadores.pop();
     }
 
-    // Almacenar tokens en la pila de expresión postfija
+    // Almacenar tokens en la pila de expresion postfija
+    // Desde el string que se concateno
     std::istringstream iss(resultado);
     std::string tokenStr;
     while (iss >> tokenStr) {
@@ -95,7 +98,8 @@ public:
 
   void EvaluarExpresion() {
     // C++ 23 Feature: deduccion automatica de tipos en funciones locales
-    auto Apply = [](double a, double b, std::string op) -> double {
+    auto Apply = [](std::float64_t a, std::float64_t b,
+                    std::string op) -> std::float64_t {
       if (op == "+")
         return a + b;
       if (op == "-")
@@ -116,14 +120,14 @@ public:
       }
 
       // C++23 Feature: std::unreachable
-      return 0;
+      std::unreachable();
     };
 
-    auto ConsumeOperator = [&Apply](std::stack<double> &stack,
-                                    std::string op) -> double {
-      double a = stack.top();
+    auto ConsumeOperator = [&Apply](std::stack<std::float64_t> &stack,
+                                    std::string op) -> std::float64_t {
+      std::float64_t a = stack.top();
       stack.pop();
-      double b = stack.top();
+      std::float64_t b = stack.top();
       stack.pop();
 
       return Apply(b, a, op);
@@ -136,23 +140,29 @@ public:
       std::string token = outputVector[i];
 
       if (val.ValidarOperador(token)) {
-        double resultado;
+        std::float64_t resultado;
         resultado = ConsumeOperator(EvaluationStack, token);
         EvaluationStack.push(resultado);
       } else {
-        EvaluationStack.push(std::stod(token));
+        try {
+          EvaluationStack.push(std::stod(token));
+        } catch (std::invalid_argument &e) {
+          throw std::invalid_argument("Error: Token invalido en la expresion " +
+                                      token);
+          break;
+        };
       }
-    }
 
-    this->resultado = EvaluationStack.top();
-    std::cout << "Resultado: " << EvaluationStack.top() << std::endl;
+      this->resultado = EvaluationStack.top();
+      std::cout << "Resultado: " << EvaluationStack.top() << std::endl;
+    }
   }
 
-  double GetResultado(std::stack<double> &EvaluationStack) {
+  std::float64_t GetResultado(std::stack<std::float64_t> &EvaluationStack) {
     return EvaluationStack.top();
   }
 
-  double EvaluarExpresion(const std::string &expresion) {
+  std::float64_t EvaluarExpresion(const std::string &expresion) {
 
     auto VaciarStack = [](auto &stack) {
       while (!stack.empty())

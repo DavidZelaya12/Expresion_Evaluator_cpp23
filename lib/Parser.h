@@ -77,21 +77,13 @@ public:
         std::cout << "Variable encontrada: " << tokens[i] << std::endl;
         continue;
       }
+
       std::cout << "Ingrese el valor para la variable: " << tokens[i]
                 << std::endl;
       double valor;
       std::cin >> valor;
       tokens[i] = std::to_string(round(valor * 100) / 100);
     }
-    MostrarTokens();
-  }
-
-  void MostrarTokens() {
-    std::cout << "Tokens: ";
-    for (std::string t : tokens) {
-      std::cout << t << " ";
-    }
-    std::cout << std::endl;
   }
 
   std::expected<void, std::string> ValidarParentesis() {
@@ -175,6 +167,8 @@ public:
     return {};
   }
 
+  // Para setear la operacion valida en el main (ya cambiados las variables por
+  // cons)
   void setExpresion(std::string &expresion) {
     std::string localExpresion;
     for (std::string t : tokens) {

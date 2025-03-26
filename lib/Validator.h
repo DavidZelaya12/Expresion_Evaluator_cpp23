@@ -6,7 +6,7 @@
 
 class Validator {
 public:
-  Validator() { std::cout << "Validator creado" << std::endl; }
+  Validator() {}
 
   bool ValidarOperador(std::string hola) {
     char token = hola[0];

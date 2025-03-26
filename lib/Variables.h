@@ -9,11 +9,12 @@ expresiones
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <stdfloat>
 #include <string>
 
 class Variables {
 public:
-  std::map<std::string, double> variableMap;
+  std::map<std::string, std::float64_t> variableMap;
 
   Variables() { InitVariables(); }
 
@@ -28,15 +29,15 @@ public:
     }
 
     while (std::getline(archivo, linea)) {
-
       if (linea.empty()) {
         continue;
       }
+      linea.erase(remove(linea.begin(), linea.end(), ' '), linea.end());
       std::string variable = linea.substr(0, linea.find("="));
       std::string valor = linea.substr(linea.find("=") + 1);
       variableMap[variable] = std::stod(valor);
     }
-    std::cout << "Variables cargadas" << std::endl;
+    std::cout << "--Variables cargadas--" << std::endl;
     MostrarVariables();
   }
 
@@ -44,10 +45,6 @@ public:
     for (auto const &x : variableMap) {
       std::cout << x.first << "=" << x.second << std::endl;
     }
-  }
-
-  void AgregarVariable(std::string variable, double valor) {
-    variableMap[variable] = valor;
   }
 
   bool ExisteVariable(std::string variable) {
