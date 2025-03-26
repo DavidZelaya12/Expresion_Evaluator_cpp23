@@ -1,14 +1,18 @@
+#ifndef EXPRESIONEVALUATOR_H
+#define EXPRESIONEVALUATOR_H
 #include <Validator.h>
 #include <cctype>
+#include <cmath>
 #include <iostream>
 #include <sstream>
 #include <stack>
 #include <string>
 #include <vector>
-
 class ExpresionEvaluator {
 public:
   std::stack<std::string> ExpresionPostfija;
+  std::stack<double> EvaluationStack;
+  double resultado = 0;
   Validator val;
 
   ExpresionEvaluator() {
@@ -25,8 +29,10 @@ public:
       if (token == ' ')
         continue;
 
+      // ingresar tokens numericos (incluidos decimales)
       if (isdigit(token)) {
-        while (i < expresion.size() && isdigit(expresion[i])) {
+        while (i < expresion.size() &&
+               (isdigit(expresion[i]) || expresion[i] == '.')) {
           resultado += expresion[i];
           i++;
         }
@@ -104,6 +110,12 @@ public:
               "Error: Division por cero no es permitida");
         return a / b;
       }
+      if (op == "^") {
+
+        return pow(a, b);
+      }
+
+      // C++23 Feature: std::unreachable
       return 0;
     };
 
@@ -117,7 +129,6 @@ public:
       return Apply(b, a, op);
     };
 
-    std::stack<double> EvaluationStack;
     std::vector<std::string> outputVector;
     StackToVector(ExpresionPostfija, outputVector);
 
@@ -133,8 +144,29 @@ public:
       }
     }
 
+    this->resultado = EvaluationStack.top();
     std::cout << "Resultado: " << EvaluationStack.top() << std::endl;
   }
 
-  std::stack<std::string> getExpresion() { return ExpresionPostfija; }
+  double GetResultado(std::stack<double> &EvaluationStack) {
+    return EvaluationStack.top();
+  }
+
+  double EvaluarExpresion(const std::string &expresion) {
+
+    auto VaciarStack = [](auto &stack) {
+      while (!stack.empty())
+        stack.pop();
+    };
+
+    VaciarStack(EvaluationStack);
+    VaciarStack(ExpresionPostfija);
+    resultado = 0;
+
+    setExpresion(expresion);
+    EvaluarExpresion();
+    return resultado;
+  }
 };
+
+#endif
