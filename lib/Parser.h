@@ -1,125 +1,186 @@
 #include "Validator.h"
+#include <Variables.h>
+#include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <expected> // Feature C++23
 #include <iostream>
+#include <sstream>
 #include <stack>
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-/*
-Este parser se dedicara a seguir una gramatica bnf para
-validar la sintaxis de una expresion matematica, no para
-su evaluacion
-*/
-
-/*
-BNF:
-<expr> ::= <term> { ("+" | "-") <term> }
-<term> ::= <factor> { ("*" | "/") <factor> }
-<factor> ::= <number> | "(" <expr> ")"
-<number> ::= <digit> { <digit> }
-<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-*/
-
+// Clase Parser: analiza la sintaxis de evaluaciones matemáticas
+// Se valida que cada paréntesis de apertura esté precedido por un operador,
+// salvo al inicio
 class Parser {
 public:
   Validator val;
+  Variables var;
   std::vector<std::string> tokens;
-  int pos;
 
-  Parser() : pos(0) { std::cout << "Parser creado" << std::endl; }
+  Parser() {}
 
-  // Tokeniza la expresión y valida los paréntesis
-  void tokenizar(const std::string &expresion) {
+  // Se tiene que poder tokenizar variables
+  std::expected<void, std::string> Validar(const std::string &expresion) {
     tokens.clear();
-    pos = 0;
-    std::string token = "";
+    std::string token;
+
+    if (expresion.empty()) {
+      return std::unexpected("Error: Expresion vacia");
+    }
 
     for (int i = 0; i < expresion.length(); i++) {
       char c = expresion[i];
-      if (c == ' ')
+      if (c == ' ') {
+
         continue;
-      if (c == '(' || c == ')' || val.ValidarOperador(std::string(1, c))) {
-        if (!token.empty()) {
-          tokens.push_back(token);
-          token = "";
+      }
+
+      // ingresar tokens numericos (incluidos decimales)
+      if (isdigit(c)) {
+        while (i < expresion.size() &&
+               (isdigit(expresion[i]) || expresion[i] == '.')) {
+          token += expresion[i];
+          i++;
         }
-        if (!tokens.empty() && std::isdigit(tokens.back().back()) && c == '(') {
-          tokens.push_back("*");
-        }
+        tokens.push_back(token);
+        token.clear();
+        i--; // ajustar índice
+      } else if (c == '(' || c == ')' ||
+                 val.ValidarOperador(std::string(1, c))) {
         tokens.push_back(std::string(1, c));
       } else {
-        token += c;
+        // tokenizar variables
+        while (i < expresion.size() && isalpha(expresion[i])) {
+          token += expresion[i];
+          i++;
+        }
+        tokens.push_back(token);
+        token.clear();
+        i--; // ajustar índice
       }
     }
-    if (!token.empty())
-      tokens.push_back(token);
-
-    ValidarParentesis(expresion);
+    AgregarValores();
+    return ValidarParentesis();
   }
 
-  // Verifica que los parentesis esten balanceados
-  void ValidarParentesis(const std::string &expresion) {
-    std::stack<char> pila;
-    for (char c : expresion) {
-      if (c == '(')
-        pila.push(c);
-      else if (c == ')') {
-        if (pila.empty())
-          throw std::invalid_argument(
-              "Error de sintaxis: parentesis no balanceados");
-        pila.pop();
+  void AgregarValores() {
+    for (int i = 0; i < tokens.size(); i++) {
+      if (val.ValidarOperador(tokens[i]) || tokens[i] == "(" ||
+          tokens[i] == ")" || isdigit(tokens[i][0])) {
+        continue;
+      }
+
+      if (var.ExisteVariable(tokens[i])) {
+        tokens[i] = std::to_string(var.ObtenerValor(tokens[i]));
+        std::cout << "Variable encontrada: " << tokens[i] << std::endl;
+        continue;
+      }
+      std::cout << "Ingrese el valor para la variable: " << tokens[i]
+                << std::endl;
+      double valor;
+      std::cin >> valor;
+      tokens[i] = std::to_string(round(valor * 100) / 100);
+    }
+    MostrarTokens();
+  }
+
+  void MostrarTokens() {
+    std::cout << "Tokens: ";
+    for (std::string t : tokens) {
+      std::cout << t << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  std::expected<void, std::string> ValidarParentesis() {
+    // Valida que para cada parentesis "(" hay un ")"
+    int parentesis = 0;
+    for (std::string t : tokens) {
+      if (t == "(") {
+        parentesis++;
+      } else if (t == ")") {
+        parentesis--;
       }
     }
-    if (!pila.empty())
-      throw std::invalid_argument(
-          "Error de sintaxis: parentesis no balanceados");
-  }
 
-  // <expr> ::= <term> { ("+" | "-") <term> }
-  void parseExpression() {
-    parseTerm();
-    while (pos < tokens.size() && (tokens[pos] == "+" || tokens[pos] == "-")) {
-      pos++; // Consume el operador
-      parseTerm();
+    if (parentesis != 0) {
+      return std::unexpected("Error: Parentesis no balanceados");
     }
+
+    return validarSintaxis();
   }
 
-  // <term> ::= <factor> { ("*" | "/") <factor> }
-  void parseTerm() {
-    parseFactor();
-    while (pos < tokens.size() && (tokens[pos] == "*" || tokens[pos] == "/")) {
-      pos++; // Consume el operador
-      parseFactor();
+  std::expected<void, std::string> validarSintaxis() {
+    // Validar que las expresiones sean correctas
+    std::string Evaluacion;
+    for (int i = 0; i < tokens.size(); i++) {
+      std::string token = tokens[i];
+      Evaluacion += token;
+      // Casos en los que la sintaxis no se cumplira
+
+      if (val.ValidarOperador(token)) {
+        // Valida que la operacion no empieza ni termine con operadores
+        if (i == 0 || i == tokens.size() - 1) {
+          return std::unexpected("Error: Operador en posicion incorrecta en: " +
+                                 Evaluacion);
+        }
+
+        if (tokens[i + 1] == ")") {
+          return std::unexpected("Error: Operador en posicion incorrecta en: " +
+                                 Evaluacion);
+        }
+      }
+
+      // Valida que antes de un parentesis haya un operador
+      if (token == "(") {
+        if (i != 0 && !val.ValidarOperador(tokens[i - 1]) &&
+            tokens[i - 1] != "(") {
+          return std::unexpected(
+              "Error: Parentesis no precedido por operador en: " + Evaluacion);
+        }
+        // validar que no termine con un (
+        if (i == tokens.size() - 1) {
+          return std::unexpected("Error: Parentesis no cerrado en: " +
+                                 Evaluacion);
+        }
+      }
+
+      // Valida que despues de un parentesis haya un operador
+      if (token == ")") {
+        if (i != tokens.size() - 1 &&
+            !(val.ValidarOperador(tokens[i + 1]) || tokens[i + 1] == ")")) {
+          return std::unexpected(
+              "Error: Parentesis no seguido por operador en: " + Evaluacion);
+        }
+      }
+
+      // Valida que no haya dos operadores seguidos
+      if (val.ValidarOperador(token)) {
+        if (i != tokens.size() - 1 && val.ValidarOperador(tokens[i + 1])) {
+          return std::unexpected("Error: Operadores seguidos en: " +
+                                 Evaluacion);
+        }
+      }
+
+      // Valida que no haya dos numeros seguidos
+      if (isdigit(token[0])) {
+        if (i != tokens.size() - 1 && isdigit(tokens[i + 1][0])) {
+          return std::unexpected("Error: Numeros seguidos en " + Evaluacion);
+        }
+      }
     }
+
+    return {};
   }
 
-  // <factor> ::= <number> | "(" <expr> ")"
-  void parseFactor() {
-    if (pos >= tokens.size())
-      throw std::invalid_argument("Error de sintaxis: token inesperado");
-
-    std::string token = tokens[pos];
-    if (token == "(") {
-      pos++; // Consume "("
-      parseExpression();
-      if (pos >= tokens.size() || tokens[pos] != ")")
-        throw std::invalid_argument("Error de sintaxis: falta ')'");
-      pos++; // Consume ")"
-    } else {
-      // Validar que sea un número
-      if (!val.ValidarNumero(token))
-        throw std::invalid_argument("Error de sintaxis: token invalido '" +
-                                    token + "'");
-      pos++; // Consume el numero
+  void setExpresion(std::string &expresion) {
+    std::string localExpresion;
+    for (std::string t : tokens) {
+      localExpresion += t;
     }
-  }
-
-  // Verifica que se haya consumido toda la expresion
-  void verificarSintaxis() {
-    parseExpression();
-    if (pos != tokens.size())
-      throw std::invalid_argument(
-          "Error de sintaxis: tokens adicionales encontrados");
+    expresion = localExpresion;
   }
 };
+;
