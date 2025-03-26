@@ -108,6 +108,10 @@ public:
       } else if (op == "*") {
         return a * b;
       } else if (op == "%") {
+        if (b == 0) {
+          throw std::invalid_argument(
+              "Error: Division por cero no es permitida");
+        };
         return (int)a % (int)b;
       } else if (op == "/") {
         if (b == 0)
