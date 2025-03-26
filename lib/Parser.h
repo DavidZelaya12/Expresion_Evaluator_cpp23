@@ -83,6 +83,7 @@ public:
       double valor;
       std::cin >> valor;
       tokens[i] = std::to_string(round(valor * 100) / 100);
+      var.AgregarVariable(tokens[i], valor);
     }
   }
 

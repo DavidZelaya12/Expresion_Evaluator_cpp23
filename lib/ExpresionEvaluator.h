@@ -76,8 +76,9 @@ public:
     }
 
     // Almacenar tokens en la pila de expresion postfija
-    // Desde el string que se concateno
-    std::istringstream iss(resultado);
+    // Desde el string que se concatenado
+    std::istringstream iss(resultado); // Convertir string a stream (Stream:
+                                       // Ejemplo: 1 2 + -> 1, 2, +)
     std::string tokenStr;
     while (iss >> tokenStr) {
       ExpresionPostfija.push(tokenStr);
@@ -100,27 +101,25 @@ public:
     // C++ 23 Feature: deduccion automatica de tipos en funciones locales
     auto Apply = [](std::float64_t a, std::float64_t b,
                     std::string op) -> std::float64_t {
-      if (op == "+")
+      if (op == "+") {
         return a + b;
-      if (op == "-")
+      } else if (op == "-") {
         return a - b;
-      if (op == "*")
+      } else if (op == "*") {
         return a * b;
-      if (op == "%")
+      } else if (op == "%") {
         return (int)a % (int)b;
-      if (op == "/") {
+      } else if (op == "/") {
         if (b == 0)
           throw std::invalid_argument(
               "Error: Division por cero no es permitida");
         return a / b;
-      }
-      if (op == "^") {
-
+      } else if (op == "^") {
         return pow(a, b);
+      } else {
+        // C++23 Feature: std::unreachable
+        std::unreachable();
       }
-
-      // C++23 Feature: std::unreachable
-      std::unreachable();
     };
 
     auto ConsumeOperator = [&Apply](std::stack<std::float64_t> &stack,
@@ -152,10 +151,10 @@ public:
           break;
         };
       }
-
-      this->resultado = EvaluationStack.top();
-      std::cout << "Resultado: " << EvaluationStack.top() << std::endl;
     }
+
+    this->resultado = EvaluationStack.top();
+    std::cout << "Resultado: " << EvaluationStack.top() << std::endl;
   }
 
   std::float64_t GetResultado(std::stack<std::float64_t> &EvaluationStack) {

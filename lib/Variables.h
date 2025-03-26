@@ -51,6 +51,10 @@ public:
     return variableMap.find(variable) != variableMap.end();
   }
 
+  void AgregarVariable(std::string token, double valor) {
+    variableMap[token] = valor;
+  }
+
   double ObtenerValor(std::string variable) { return variableMap[variable]; }
 };
 
